@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.3</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.antigravity</groupId>
+    <artifactId>competitive-analysis</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>comp-analysis</name>
+    <description>Real Estate CxO Decision-Support Agent</description>
+
+    <properties>
+        <!-- Java 25 LTS (ADR-0003). GA features only; no preview APIs. -->
+        <java.version>25</java.version>
+        <spring-modulith.version>1.4.1</spring-modulith.version>
+        <!-- agent-kernel: the reusable agent core (this app is its 2nd consumer; R1). Resolved from the
+             local .m2 SNAPSHOT for now; CI builds it from source (see .github/workflows/ci.yml). The agent
+             layer lives ONLY in the intelligence module — the Spring companion auto-wires a SyncOrchestrator. -->
+        <agent-kernel.version>0.1.0-SNAPSHOT</agent-kernel.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.modulith</groupId>
+                <artifactId>spring-modulith-bom</artifactId>
+                <version>${spring-modulith.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- Spring Modulith: module boundaries + verification (ADR-0003) -->
+        <dependency>
+            <groupId>org.springframework.modulith</groupId>
+            <artifactId>spring-modulith-starter-core</artifactId>
+        </dependency>
+
+        <!-- agent-kernel (R1): ring-1 core + the assembled SyncOrchestrator + the Spring auto-config
+             companion. agent-kernel-spring transitively brings core + orchestration, but they're declared
+             explicitly for clarity. Spring deps inside agent-kernel-spring are `provided` — this app's own
+             Spring Boot satisfies them. The kernel types live only in the intelligence module. -->
+        <dependency>
+            <groupId>com.gamma.agentkernel</groupId>
+            <artifactId>agent-kernel-core</artifactId>
+            <version>${agent-kernel.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.gamma.agentkernel</groupId>
+            <artifactId>agent-orchestration</artifactId>
+            <version>${agent-kernel.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.gamma.agentkernel</groupId>
+            <artifactId>agent-kernel-spring</artifactId>
+            <version>${agent-kernel.version}</version>
+        </dependency>
+
+        <!-- Schema migrations: Flyway on PostgreSQL -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.modulith</groupId>
+            <artifactId>spring-modulith-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

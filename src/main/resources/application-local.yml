@@ -1,0 +1,11 @@
+# Local dev profile: run with  -Dspring-boot.run.profiles=local  (or SPRING_PROFILES_ACTIVE=local)
+# Pairs with docker-compose.yml (Postgres + pgvector on localhost:5432).
+management:
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.antigravity.companalysis: DEBUG
+    org.springframework.modulith: INFO

@@ -1,0 +1,45 @@
+name: CI
+
+# Builds + tests the CxO decision-support app on every push/PR. The agent layer (intelligence module)
+# depends on agent-kernel, which is still 0.1.0-SNAPSHOT and not yet published to a registry (it stays
+# SNAPSHOT through R1; a stable version is pinned + pulled from GitHub Packages once the kernel cuts 1.0).
+# Until then, build the kernel from source into the runner's local ~/.m2 so the reactor resolves
+# agent-kernel-core / agent-orchestration / agent-kernel-spring. The kernel repo is public — no token needed.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Check out agent-kernel (dependency source)
+        uses: actions/checkout@v4
+        with:
+          repository: jotder/agent-kernel
+          path: agent-kernel
+          # Tracks the SNAPSHOT this app pins; bump to a pinned ref/tag when the kernel cuts a release.
+
+      - name: Install agent-kernel to local .m2
+        run: mvn --batch-mode --no-transfer-progress -f agent-kernel/pom.xml install -DskipTests
+
+      - name: Build + test
+        run: ./mvnw --batch-mode --no-transfer-progress test
+
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: '**/target/surefire-reports/'

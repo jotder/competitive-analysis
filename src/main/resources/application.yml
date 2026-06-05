@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: comp-analysis
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/companalysis}
+    username: ${DB_USER:companalysis}
+    password: ${DB_PASSWORD:companalysis}
+  jpa:
+    hibernate:
+      # Flyway owns the schema; Hibernate only validates against it.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+info:
+  app:
+    name: Real Estate CxO Decision-Support Agent
+    java: "25"

@@ -1,0 +1,22 @@
+# Local Postgres with the pgvector extension (used later for RAG embeddings).
+# Start:  docker compose up -d
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: companalysis-db
+    environment:
+      POSTGRES_DB: companalysis
+      POSTGRES_USER: companalysis
+      POSTGRES_PASSWORD: companalysis
+    ports:
+      - "5432:5432"
+    volumes:
+      - companalysis-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U companalysis -d companalysis"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  companalysis-pgdata:
