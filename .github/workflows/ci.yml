@@ -1,19 +1,28 @@
 name: CI
 
 # Builds + tests the CxO decision-support app on every push/PR. The agent layer (intelligence module)
-# depends on agent-kernel 1.0.0. The kernel isn't published to a Maven registry yet, so we build it from
-# source at the v1.0.0 tag into the runner's local ~/.m2 so the reactor resolves agent-kernel-core /
-# agent-orchestration / agent-kernel-spring / agent-provider-langchain4j / agent-store-postgres. The kernel
-# repo is public — no token needed. (Switch to GitHub Packages once the kernel publishes artifacts there.)
+# depends on agent-kernel 1.0.0, published to GitHub Packages by the kernel's release workflow. We resolve
+# it from there (agent-kernel-core / agent-orchestration / agent-kernel-spring / agent-provider-langchain4j /
+# agent-store-postgres) via a CI-only settings.xml that adds the agent-kernel Maven repo + token auth. The
+# consumer POMs stay clean; local dev still resolves the kernel from ~/.m2. Public GitHub Packages still
+# require an authenticated token to download, so GITHUB_TOKEN (packages: read) is used.
 
 on:
   push:
     branches: [main, master]
   pull_request:
 
+# Default GITHUB_TOKEN perms, narrowed: read the repo + read agent-kernel's published Maven packages.
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      GH_PKG_ACTOR: ${{ github.actor }}
+      GH_PKG_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -24,15 +33,36 @@ jobs:
           java-version: '25'
           cache: maven
 
-      - name: Check out agent-kernel (dependency source)
-        uses: actions/checkout@v4
-        with:
-          repository: jotder/agent-kernel
-          path: agent-kernel
-          ref: v1.0.0   # the released version this app pins (agent-kernel.version=1.0.0)
-
-      - name: Install agent-kernel to local .m2
-        run: mvn --batch-mode --no-transfer-progress -f agent-kernel/pom.xml install -DskipTests
+      - name: Configure GitHub Packages auth (agent-kernel)
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<'EOF'
+          <settings>
+            <servers>
+              <server>
+                <id>github-agent-kernel</id>
+                <username>${env.GH_PKG_ACTOR}</username>
+                <password>${env.GH_PKG_TOKEN}</password>
+              </server>
+            </servers>
+            <profiles>
+              <profile>
+                <id>github-agent-kernel</id>
+                <repositories>
+                  <repository>
+                    <id>github-agent-kernel</id>
+                    <url>https://maven.pkg.github.com/jotder/agent-kernel</url>
+                    <releases><enabled>true</enabled></releases>
+                    <snapshots><enabled>false</enabled></snapshots>
+                  </repository>
+                </repositories>
+              </profile>
+            </profiles>
+            <activeProfiles>
+              <activeProfile>github-agent-kernel</activeProfile>
+            </activeProfiles>
+          </settings>
+          EOF
 
       - name: Build + test
         run: mvn --batch-mode --no-transfer-progress test
