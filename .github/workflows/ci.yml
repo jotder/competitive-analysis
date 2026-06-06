@@ -35,7 +35,7 @@ jobs:
         run: mvn --batch-mode --no-transfer-progress -f agent-kernel/pom.xml install -DskipTests
 
       - name: Build + test
-        run: ./mvnw --batch-mode --no-transfer-progress test
+        run: mvn --batch-mode --no-transfer-progress test
 
       - name: Upload test reports on failure
         if: failure()
