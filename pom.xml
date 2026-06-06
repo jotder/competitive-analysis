@@ -78,6 +78,22 @@
             <artifactId>agent-kernel-spring</artifactId>
             <version>${agent-kernel.version}</version>
         </dependency>
+        <!-- R1.3: the hosted-model provider (Google AI Gemini via LangChain4j). Brings langchain4j +
+             the Gemini integration transitively. Abstain-safe: with no GEMINI_API_KEY the provider is
+             unavailable and the agent narrates deterministically (no network). -->
+        <dependency>
+            <groupId>com.gamma.agentkernel</groupId>
+            <artifactId>agent-provider-langchain4j</artifactId>
+            <version>${agent-kernel.version}</version>
+        </dependency>
+        <!-- R1.4: the pgvector-backed Retriever (qualitative RAG grounding; "RAG never supplies numbers").
+             Compiles against java.sql; this app's PostgreSQL driver satisfies it at runtime. Off by default
+             (companalysis.rag.enabled) — with no embedding model the agent runs grounding-free. -->
+        <dependency>
+            <groupId>com.gamma.agentkernel</groupId>
+            <artifactId>agent-store-postgres</artifactId>
+            <version>${agent-kernel.version}</version>
+        </dependency>
 
         <!-- Schema migrations: Flyway on PostgreSQL -->
         <dependency>

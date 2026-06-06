@@ -6,6 +6,9 @@ import com.gamma.agentkernel.agent.AgentResult;
 import com.gamma.agentkernel.agent.Capability;
 import com.gamma.agentkernel.agent.CapabilitySpec;
 import com.gamma.agentkernel.error.AgentError;
+import com.gamma.agentkernel.model.ModelProvider;
+import com.gamma.agentkernel.model.ModelRequest;
+import com.gamma.agentkernel.model.ModelResponse;
 import com.gamma.agentkernel.model.ModelTier;
 import com.gamma.agentkernel.tool.Tool;
 import com.gamma.agentkernel.tool.ToolResult;
@@ -18,15 +21,17 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The {@code compare} capability: answer a comparison question over a session's grid. R1.1 is the
- * kernel-integration slice, so narration is <b>deterministic and model-free</b> — it invokes the
- * {@link ComparisonGridTool} and templates a summary in which <em>every figure carries its credibility
- * tier label</em> (CxO ADR-0001). A real Gemini narrator replaces the template in R1.3, behind the same
- * capability contract. With no data the capability returns UNAVAILABLE rather than invent figures.
+ * The {@code compare} capability: answer a comparison question over a session's grid. The grid is always
+ * computed deterministically by the {@link ComparisonGridTool} (the LLM never calculates — ADR-0001); the
+ * <em>narration</em> is produced by Gemini when a model is available (R1.3), grounded strictly on that
+ * grid, and falls back to a deterministic tier-labelled template when no model is configured. Either way
+ * <em>every figure carries its credibility tier</em>. With no data the capability returns UNAVAILABLE
+ * rather than invent figures.
  *
- * <p>Dispatched by the kernel's {@code SyncOrchestrator} (auto-wired by {@code agent-kernel-spring}):
- * the orchestrator estimates confidence and abstains below threshold, so a model-unavailable or
- * data-less request degrades safely.
+ * <p>Dispatched by the kernel's {@code SyncOrchestrator}/{@code StreamingOrchestrator} (auto-wired by
+ * {@code agent-kernel-spring}): the orchestrator estimates confidence and abstains below threshold, so a
+ * model-unavailable or data-less request degrades safely. The model is reached through the read-only
+ * {@link AgentContext#models()} router, so this capability stays provider-agnostic.
  */
 @Component
 public class CompareCapability implements Capability {
@@ -59,9 +64,33 @@ public class CompareCapability implements Capability {
             return AgentResult.unavailable(ID, "no comparison data for session " + sessionId);
         }
 
-        return AgentResult.draft(ID, SPEC.version(), narrate(g), result.evidence(), List.of(),
-                "deterministic grid summary (R1.1 — no model yet)", 0.0,
-                ctx.effectiveTier(SPEC.defaultTier()), Map.of("grid", g));
+        ModelTier tier = ctx.effectiveTier(SPEC.defaultTier());
+        String facts = narrate(g);
+        ModelProvider model = ctx.models().providerFor(tier);
+        if (model.available()) {
+            try {
+                ModelResponse response = model.generate(
+                        ModelRequest.text(tier, SYSTEM_PROMPT, userPrompt(request.userText(), facts)));
+                if (response.text() != null && !response.text().isBlank()) {
+                    return AgentResult.draft(ID, SPEC.version(), response.text(), result.evidence(), List.of(),
+                            "Gemini narration grounded on the deterministic grid", 0.0, tier, Map.of("grid", g));
+                }
+            } catch (RuntimeException e) {
+                // model failed at call time — degrade to the deterministic template rather than error out
+            }
+        }
+        return AgentResult.draft(ID, SPEC.version(), facts, result.evidence(), List.of(),
+                "deterministic grid summary (no model configured)", 0.0, tier, Map.of("grid", g));
+    }
+
+    private static final String SYSTEM_PROMPT =
+            "You are a real-estate competitive-analysis assistant. Answer ONLY from the grid facts you are "
+                    + "given. Never invent, estimate, or alter any number, unit, or credibility tier. State "
+                    + "each figure's credibility tier exactly as provided. Be concise.";
+
+    private static String userPrompt(String question, String facts) {
+        String q = (question == null || question.isBlank()) ? "Summarize the comparison." : question.trim();
+        return "Question: " + q + "\n\nGrid facts (authoritative — do not change any number or tier):\n" + facts;
     }
 
     /** Deterministic, tier-labelled summary — no model, no arithmetic on the figures. */
