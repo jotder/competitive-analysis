@@ -1,10 +1,10 @@
 name: CI
 
 # Builds + tests the CxO decision-support app on every push/PR. The agent layer (intelligence module)
-# depends on agent-kernel, which is still 0.1.0-SNAPSHOT and not yet published to a registry (it stays
-# SNAPSHOT through R1; a stable version is pinned + pulled from GitHub Packages once the kernel cuts 1.0).
-# Until then, build the kernel from source into the runner's local ~/.m2 so the reactor resolves
-# agent-kernel-core / agent-orchestration / agent-kernel-spring. The kernel repo is public — no token needed.
+# depends on agent-kernel 1.0.0. The kernel isn't published to a Maven registry yet, so we build it from
+# source at the v1.0.0 tag into the runner's local ~/.m2 so the reactor resolves agent-kernel-core /
+# agent-orchestration / agent-kernel-spring / agent-provider-langchain4j / agent-store-postgres. The kernel
+# repo is public — no token needed. (Switch to GitHub Packages once the kernel publishes artifacts there.)
 
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
         with:
           repository: jotder/agent-kernel
           path: agent-kernel
-          # Tracks the SNAPSHOT this app pins; bump to a pinned ref/tag when the kernel cuts a release.
+          ref: v1.0.0   # the released version this app pins (agent-kernel.version=1.0.0)
 
       - name: Install agent-kernel to local .m2
         run: mvn --batch-mode --no-transfer-progress -f agent-kernel/pom.xml install -DskipTests

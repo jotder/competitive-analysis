@@ -21,10 +21,11 @@
         <!-- Java 25 LTS (ADR-0003). GA features only; no preview APIs. -->
         <java.version>25</java.version>
         <spring-modulith.version>1.4.1</spring-modulith.version>
-        <!-- agent-kernel: the reusable agent core (this app is its 2nd consumer; R1). Resolved from the
-             local .m2 SNAPSHOT for now; CI builds it from source (see .github/workflows/ci.yml). The agent
-             layer lives ONLY in the intelligence module — the Spring companion auto-wires a SyncOrchestrator. -->
-        <agent-kernel.version>0.1.0-SNAPSHOT</agent-kernel.version>
+        <!-- agent-kernel: the reusable agent core (this app is its 2nd consumer; R1). Pinned to the stable
+             1.0.0 release (the freeze R1 drove to). CI builds the kernel from source at the v1.0.0 tag into
+             the runner's .m2 (see .github/workflows/ci.yml); locally it resolves from .m2. The agent layer
+             lives ONLY in the intelligence module — the Spring companion auto-wires a SyncOrchestrator. -->
+        <agent-kernel.version>1.0.0</agent-kernel.version>
     </properties>
 
     <dependencyManagement>
